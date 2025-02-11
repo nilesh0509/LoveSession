@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>💖</title>
+    <link rel="stylesheet" href="spy.css" />
+  </head>
+  <body>
+     <!-- Audio background music -->
+   <div style="text-align: center; background-color: #f03d52;">
+    <div style="display: inline-block; vertical-align: middle;">
+      <p>Play the Music</p>
+    </div>
+    <div style="display: inline-block;vertical-align: middle; padding-top:.5em ; padding-left: 1em;">
+      
+    <audio controls autoplay style="width: 6.5em; height: 25px; " loop>
+      <source src="song.mp3" type="audio/ogg">
+      Your browser does not support the audio element.
+    </audio>
+    </div>
+  </div>
+    <div class="content">
+      <img src="" alt="" />
+      <div class="text scrollable-paragraph">
+        <p >
+          Love💖,
+          <br />
+          I want to promise you, with every beat of my heart 💓, that there will never be a moment in your life where you won't find me standing beside you 🤝. No matter what life brings, I will always be there—loving you 💖, cherishing you 🥰, and supporting you 💪. You are my everything 🌍, my world 🌟, my joy 😄. You inspire me in ways words can't fully capture ✨, and because of you, I am driven to be the best version of myself 🙌.
+          <br><br>
+          To be called yours is the greatest honor of my life 🏆. Every moment with you fills me with an unexplainable happiness 😊, and I find myself smiling simply because you exist 😘. Your love is the light that brightens my darkest days 🌞, and I promise, with all that I am, that I will adore every part of you 💕. I will make it my life's mission to ensure you feel loved, valued, and appreciated every single day 💫. You are my heart ❤️, and there’s nothing in this world I wouldn’t do to make you feel just how precious you are to me 🌹. I love you more than words can say, my baby 😍. Forever and always, I’ll be yours 💍.
+        </p>
+        <p>Missing You A Lot 🤞💖</p>
+      </div>
+    </div>
+    <h3 id="responsive-paragraph">Swipe on screen to see the Secert Message</h3>
+    <canvas></canvas>
+
+    <script>
+      function updateParagraphContent() {
+        const paragraph = document.getElementById('responsive-paragraph');
+        const width = window.innerWidth;
+  
+        if (width <= 480) {
+          paragraph.innerText = "Click on screen to see the Secert Message"; // For mobile
+        }
+      }
+  
+      // Call function on page load and whenever the window is resized
+      window.addEventListener('load', updateParagraphContent);
+      window.addEventListener('resize', updateParagraphContent);
+    </script>
+
+    <script type="x-shader/x-fragment" id="vertShader">
+      precision highp float;
+
+        attribute vec2 aPosition;
+        varying vec2 vUv;
+        varying vec2 vL;
+        varying vec2 vR;
+        varying vec2 vT;
+        varying vec2 vB;
+        uniform vec2 u_vertex_texel;
+
+        void main () {
+            vUv = aPosition * .5 + .5;
+            vL = vUv - vec2(u_vertex_texel.x, 0.);
+            vR = vUv + vec2(u_vertex_texel.x, 0.);
+            vT = vUv + vec2(0., u_vertex_texel.y);
+            vB = vUv - vec2(0., u_vertex_texel.y);
+            gl_Position = vec4(aPosition, 0., 1.);
+        }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragShaderAdvection">
+      precision highp float;
+        precision highp sampler2D;
+
+        varying vec2 vUv;
+        uniform sampler2D u_velocity_txr;
+        uniform sampler2D u_input_txr;
+        uniform vec2 u_vertex_texel;
+        uniform vec2 u_output_textel;
+        uniform float u_dt;
+        uniform float u_dissipation;
+
+        vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
+            vec2 st = uv / tsize - 0.5;
+
+            vec2 iuv = floor(st);
+            vec2 fuv = fract(st);
+
+            vec4 a = texture2D(sam, (iuv + vec2(0.5, 0.5)) * tsize);
+            vec4 b = texture2D(sam, (iuv + vec2(1.5, 0.5)) * tsize);
+            vec4 c = texture2D(sam, (iuv + vec2(0.5, 1.5)) * tsize);
+            vec4 d = texture2D(sam, (iuv + vec2(1.5, 1.5)) * tsize);
+
+            return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
+        }
+
+        void main () {
+            vec2 coord = vUv - u_dt * bilerp(u_velocity_txr, vUv, u_vertex_texel).xy * u_vertex_texel;
+            gl_FragColor = u_dissipation * bilerp(u_input_txr, coord, u_output_textel);
+            gl_FragColor.a = 1.;
+        }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragShaderDivergence">
+      precision highp float;
+        precision highp sampler2D;
+
+        varying highp vec2 vUv;
+        varying highp vec2 vL;
+        varying highp vec2 vR;
+        varying highp vec2 vT;
+        varying highp vec2 vB;
+        uniform sampler2D u_velocity_txr;
+
+        void main () {
+            float L = texture2D(u_velocity_txr, vL).x;
+            float R = texture2D(u_velocity_txr, vR).x;
+            float T = texture2D(u_velocity_txr, vT).y;
+            float B = texture2D(u_velocity_txr, vB).y;
+
+            float div = .5 * (R - L + T - B);
+            gl_FragColor = vec4(div, 0., 0., 1.);
+        }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragShaderPressure">
+      precision highp float;
+        precision highp sampler2D;
+
+        varying highp vec2 vUv;
+        varying highp vec2 vL;
+        varying highp vec2 vR;
+        varying highp vec2 vT;
+        varying highp vec2 vB;
+        uniform sampler2D u_pressure_txr;
+        uniform sampler2D u_divergence_txr;
+
+        void main () {
+            float L = texture2D(u_pressure_txr, vL).x;
+            float R = texture2D(u_pressure_txr, vR).x;
+            float T = texture2D(u_pressure_txr, vT).x;
+            float B = texture2D(u_pressure_txr, vB).x;
+            float C = texture2D(u_pressure_txr, vUv).x;
+            float divergence = texture2D(u_divergence_txr, vUv).x;
+            float pressure = (L + R + B + T - divergence) * 0.25;
+            gl_FragColor = vec4(pressure, 0., 0., 1.);
+        }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragShaderGradientSubtract">
+      precision highp float;
+        precision highp sampler2D;
+
+        varying highp vec2 vUv;
+        varying highp vec2 vL;
+        varying highp vec2 vR;
+        varying highp vec2 vT;
+        varying highp vec2 vB;
+        uniform sampler2D u_pressure_txr;
+        uniform sampler2D u_velocity_txr;
+
+        void main () {
+            float L = texture2D(u_pressure_txr, vL).x;
+            float R = texture2D(u_pressure_txr, vR).x;
+            float T = texture2D(u_pressure_txr, vT).x;
+            float B = texture2D(u_pressure_txr, vB).x;
+            vec2 velocity = texture2D(u_velocity_txr, vUv).xy;
+            velocity.xy -= vec2(R - L, T - B);
+            gl_FragColor = vec4(velocity, 0., 1.);
+        }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragShaderPoint">
+      precision highp float;
+        precision highp sampler2D;
+
+        varying vec2 vUv;
+        uniform sampler2D u_input_txr;
+        uniform float u_ratio;
+        uniform vec3 u_point_value;
+        uniform vec2 u_point;
+        uniform float u_point_size;
+
+        void main () {
+            vec2 p = vUv - u_point.xy;
+            p.x *= u_ratio;
+            vec3 splat = pow(2., -dot(p, p) / u_point_size) * u_point_value;
+            vec3 base = texture2D(u_input_txr, vUv).xyz;
+            gl_FragColor = vec4(base + splat, 1.);
+        }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragShaderDisplay">
+      precision highp float;
+        precision highp sampler2D;
+
+        varying vec2 vUv;
+        uniform sampler2D u_output_texture;
+
+        void main () {
+            vec3 C = texture2D(u_output_texture, vUv).rgb;
+            float a = max(C.r, max(C.g, C.b));
+            a = pow(.1 * a, .1);
+            a = clamp(a, 0., 1.);
+            gl_FragColor = vec4(1. - C, 1. - a);
+        }
+    </script>
+    <script src="love.js"></script>
+  </body>
+</html>
